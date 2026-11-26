@@ -1,10 +1,74 @@
-// W2 の POSSE課題：ここに型 LoadResult と、関数 isCourse・loadCourses を書いて export する。
-// 下の3つは仮置き。W1 のあいだも pnpm typecheck のエラーを0件にしておくためだけにある（main.ts と W5 の check-api.ts がここから読み込むため）。
-// W2 では、この3つを全部消してから書く。any は W1 で見たとおり型のチェックを止めるので、残したままにしない
-export type LoadResult = any;
-export function isCourse(_value: unknown): boolean {
-  throw new Error("W2 の課題で isCourse を書く");
+import type { Course } from "../w01/timetable.ts";
+import type { FetchFn } from "./fake-api.ts";
+
+export type LoadResult =
+  | { ok: true; courses: Course[] }
+  | { ok: false; reason: "server" | "network" }
+  | { ok: false; reason: "invalid"; ids: number[] };
+
+function isObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-export async function loadCourses(_fetchFn: unknown): Promise<LoadResult> {
-  throw new Error("W2 の課題で loadCourses を書く");
+
+export function isCourse(value: unknown): value is Course {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (
+    "id" in value && typeof value.id === "number" &&
+    "code" in value && typeof value.code === "string" &&
+    "name" in value && typeof value.name === "string" &&
+    "teacher" in value && (typeof value.teacher === "string" || value.teacher === null) &&
+    "day" in value && (
+      value.day === 1 || value.day === 2 || value.day === 3 ||
+      value.day === 4 || value.day === 5
+    ) &&
+    "period" in value && typeof value.period === "number" &&
+    "room" in value && typeof value.room === "string" &&
+    "credits" in value && typeof value.credits === "number" &&
+    "required" in value && typeof value.required === "boolean"
+  );
+}
+
+export async function loadCourses(fetchFn: FetchFn): Promise<LoadResult> {
+  let response: Response;
+  try {
+    response = await fetchFn("/api/courses");
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+
+  if (!response.ok) {
+    return { ok: false, reason: "server" };
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return { ok: false, reason: "invalid", ids: [] };
+  }
+
+  if (!Array.isArray(body)) {
+    return { ok: false, reason: "invalid", ids: [] };
+  }
+
+  const items: unknown[] = body;
+  const courses: Course[] = [];
+  const ids: number[] = [];
+
+  for (const item of items) {
+    if (isCourse(item)) {
+      courses.push(item);
+    } else if (isObject(item) && "id" in item && typeof item.id === "number") {
+      ids.push(item.id);
+    }
+  }
+
+  if (courses.length !== items.length) {
+    return { ok: false, reason: "invalid", ids };
+  }
+
+  return { ok: true, courses };
 }
