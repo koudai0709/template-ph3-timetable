@@ -1,11 +1,16 @@
 // W3 からの画面の入口。pnpm dev で開くと、この App が表示される
+import { TimetableGrid } from "./components/TimetableGrid.tsx";
 import courses from "./data/courses.json";
+import type { Course } from "./types.ts";
+import { isCourse } from "./w02/api.ts";
 
 export default function App() {
-  // W3：ここで TimetableGrid に courses を渡す
+  const courseData: unknown[] = courses;
+  const validCourses: Course[] = courseData.filter(isCourse);
+
   return (
     <main className="p-4">
-      <p>授業のデータは {courses.length} 件です。ここに時間割の表を出します。</p>
+      <TimetableGrid courses={validCourses} />
     </main>
   );
 }

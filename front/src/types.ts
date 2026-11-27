@@ -1,2 +1,1 @@
-// 画面から使う型（Course・Day など）を置く場所。
-// W1 の型をここへ移すか、w01/timetable.ts から読み込んで export し直すかは自分で決める（PR の「判断の記録」に理由を書く）
+export type { Course, Day } from "./w01/timetable.ts";
